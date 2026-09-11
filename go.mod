@@ -1,3 +1,3 @@
-module github.com/brunoribeiro-lab/local-gate
+module localgate
 
 go 1.22
