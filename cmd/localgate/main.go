@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/fr4nk/localgate/internal/localgate"
+	"localgate/internal/localgate"
 )
 
 func main() {
