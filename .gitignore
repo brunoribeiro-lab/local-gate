@@ -1,0 +1,4 @@
+localgate
+*.exe
+coverage.out
+dist/
