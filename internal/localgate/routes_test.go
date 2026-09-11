@@ -76,6 +76,34 @@ func TestRouteServiceAddsAndRemovesRoute(t *testing.T) {
 	}
 }
 
+func TestRouteServiceKeepsFullDomain(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	hosts := &fakeHosts{}
+	nginx := &fakeNginx{}
+	service := NewRouteService(configPath, hosts, nginx)
+
+	name := "admin-api.monitorstack.online"
+	if err := service.Add(name, 9092); err != nil {
+		t.Fatal(err)
+	}
+	if len(hosts.added) != 1 || hosts.added[0] != name {
+		t.Fatalf("added hosts = %v", hosts.added)
+	}
+	if len(nginx.added) != 1 || nginx.added[0] != name {
+		t.Fatalf("added nginx = %v", nginx.added)
+	}
+
+	if err := service.Remove(name); err != nil {
+		t.Fatal(err)
+	}
+	if len(hosts.removed) != 1 || hosts.removed[0] != name {
+		t.Fatalf("removed hosts = %v", hosts.removed)
+	}
+	if len(nginx.removed) != 1 || nginx.removed[0] != name {
+		t.Fatalf("removed nginx = %v", nginx.removed)
+	}
+}
+
 func TestRouteServiceRejectsInvalidRoutes(t *testing.T) {
 	service := NewRouteService(filepath.Join(t.TempDir(), "config.json"), &fakeHosts{}, &fakeNginx{})
 	for _, test := range []struct {
