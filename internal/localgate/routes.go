@@ -39,7 +39,7 @@ func (service RouteService) Add(name string, port int) error {
 		return err
 	}
 
-	domain := name + Suffix
+	domain := DomainForName(name)
 	if err := service.nginx.Add(domain, port); err != nil {
 		return err
 	}
@@ -68,13 +68,13 @@ func (service RouteService) Remove(name string) error {
 		return err
 	}
 	if _, exists := config[name]; !exists {
-		return fmt.Errorf("dominio %s nao foi configurado pelo Localgate", name+Suffix)
+		return fmt.Errorf("dominio %s nao foi configurado pelo Localgate", DomainForName(name))
 	}
 	if err := service.nginx.Ensure(); err != nil {
 		return err
 	}
 
-	domain := name + Suffix
+	domain := DomainForName(name)
 	if err := service.nginx.Remove(domain); err != nil {
 		return err
 	}
@@ -98,6 +98,13 @@ func (service RouteService) Reload() error {
 		return err
 	}
 	return service.nginx.Reload()
+}
+
+func DomainForName(name string) string {
+	if strings.Contains(name, ".") {
+		return name
+	}
+	return name + Suffix
 }
 
 func validateRoute(name string, port int) error {
