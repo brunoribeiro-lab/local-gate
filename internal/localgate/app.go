@@ -74,7 +74,7 @@ func (app App) add(args []string) {
 		fmt.Fprintf(app.out, "Erro ao adicionar dominio: %v\n", err)
 		return
 	}
-	fmt.Fprintf(app.out, "Adicionado: http://%s%s -> localhost:%d\n", args[1], Suffix, port)
+	fmt.Fprintf(app.out, "Adicionado: http://%s -> localhost:%d\n", DomainForName(args[1]), port)
 }
 
 func (app App) remove(args []string) {
@@ -89,7 +89,7 @@ func (app App) remove(args []string) {
 		fmt.Fprintf(app.out, "Erro ao remover dominio: %v\n", err)
 		return
 	}
-	fmt.Fprintf(app.out, "Removido: %s%s\n", args[1], Suffix)
+	fmt.Fprintf(app.out, "Removido: %s\n", DomainForName(args[1]))
 }
 
 func (app App) list() {
@@ -109,7 +109,7 @@ func (app App) list() {
 		return
 	}
 	for _, name := range names {
-		fmt.Fprintf(app.out, "http://%s%s -> localhost:%d\n", name, Suffix, config[name])
+		fmt.Fprintf(app.out, "http://%s -> localhost:%d\n", DomainForName(name), config[name])
 	}
 }
 
