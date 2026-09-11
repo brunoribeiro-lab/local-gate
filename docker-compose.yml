@@ -1,0 +1,26 @@
+services:
+  build:
+    build:
+      context: .
+      target: local-build
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    working_dir: /workspace
+    environment:
+      GOCACHE: /tmp/go-build-cache
+      GOMODCACHE: /tmp/go-mod-cache
+    volumes:
+      - .:/workspace
+    command: go build -o localgate ./cmd/localgate
+
+  test:
+    build:
+      context: .
+      target: local-build
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    working_dir: /workspace
+    environment:
+      GOCACHE: /tmp/go-build-cache
+      GOMODCACHE: /tmp/go-mod-cache
+    volumes:
+      - .:/workspace
+    command: go test ./...
