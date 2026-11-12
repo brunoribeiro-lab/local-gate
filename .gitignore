@@ -2,3 +2,4 @@ localgate
 *.exe
 coverage.out
 dist/
+git*.sh
