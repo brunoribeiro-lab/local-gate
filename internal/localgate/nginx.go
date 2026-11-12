@@ -48,9 +48,9 @@ func (nginx Nginx) Ensure() error {
 	return nil
 }
 
-func (nginx Nginx) Add(domain string, port int) error {
+func (nginx Nginx) Add(domain string, port int, bodySize string) error {
 	sitePath := filepath.Join(nginx.available, domain)
-	if err := os.WriteFile(sitePath, []byte(nginxConfig(domain, port)), 0644); err != nil {
+	if err := os.WriteFile(sitePath, []byte(nginxConfig(domain, port, bodySize)), 0644); err != nil {
 		return fmt.Errorf("criar configuracao do Nginx: %w", err)
 	}
 
@@ -84,11 +84,16 @@ func (nginx Nginx) Reload() error {
 	return nil
 }
 
-func nginxConfig(domain string, port int) string {
+func nginxConfig(domain string, port int, bodySize string) string {
+	bodySizeDirective := ""
+	if bodySize != "" {
+		bodySizeDirective = fmt.Sprintf("    client_max_body_size %s;\n", bodySize)
+	}
+
 	return fmt.Sprintf(`server {
     listen 80;
     server_name %s;
-
+%s
     location / {
         proxy_pass http://127.0.0.1:%d;
         proxy_http_version 1.1;
@@ -100,5 +105,5 @@ func nginxConfig(domain string, port int) string {
         proxy_set_header Connection "upgrade";
     }
 }
-`, domain, port)
+`, domain, bodySizeDirective, port)
 }

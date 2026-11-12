@@ -6,10 +6,11 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type Routes interface {
-	Add(string, int) error
+	Add(string, int, string) error
 	Remove(string) error
 	List() (Config, error)
 	Reload() error
@@ -57,24 +58,78 @@ func (app App) Run(args []string) {
 }
 
 func (app App) add(args []string) {
-	if len(args) != 3 {
-		fmt.Fprintln(app.out, "Uso: localgate add <nome> <porta>")
+	name, portValue, bodySize, err := parseAddArgs(args[1:])
+	if err != nil {
+		fmt.Fprintf(app.out, "Erro nos argumentos: %v\nUso: localgate add <nome> <porta> [tamanho-maximo] [-n nome] [-p porta] [-s tamanho]\n", err)
 		return
 	}
 	if !app.requireAdministrator() {
 		return
 	}
 
-	port, err := strconv.Atoi(args[2])
+	port, err := strconv.Atoi(portValue)
 	if err != nil {
 		fmt.Fprintln(app.out, "Porta invalida.")
 		return
 	}
-	if err := app.routes.Add(args[1], port); err != nil {
+	if err := app.routes.Add(name, port, bodySize); err != nil {
 		fmt.Fprintf(app.out, "Erro ao adicionar dominio: %v\n", err)
 		return
 	}
-	fmt.Fprintf(app.out, "Adicionado: http://%s -> localhost:%d\n", DomainForName(args[1]), port)
+	fmt.Fprintf(app.out, "Adicionado: http://%s -> localhost:%d\n", DomainForName(name), port)
+}
+
+func parseAddArgs(args []string) (string, string, string, error) {
+	positionals := make([]string, 0, 3)
+	options := map[string]string{}
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if len(arg) < 2 || arg[0] != '-' {
+			positionals = append(positionals, arg)
+			continue
+		}
+
+		option := arg
+		value := ""
+		if separator := strings.IndexByte(arg, '='); separator >= 0 {
+			option, value = arg[:separator], arg[separator+1:]
+		}
+		if option != "-n" && option != "-p" && option != "-s" {
+			return "", "", "", fmt.Errorf("opcao desconhecida: %s", option)
+		}
+		if _, exists := options[option]; exists {
+			return "", "", "", fmt.Errorf("opcao informada mais de uma vez: %s", option)
+		}
+		if value == "" {
+			if strings.Contains(arg, "=") || i+1 == len(args) || strings.HasPrefix(args[i+1], "-") {
+				return "", "", "", fmt.Errorf("informe um valor para %s", option)
+			}
+			i++
+			value = args[i]
+		}
+		options[option] = value
+	}
+
+	if len(positionals) > 3 {
+		return "", "", "", fmt.Errorf("argumentos posicionais em excesso")
+	}
+	values := []string{"", "", ""}
+	for i, value := range positionals {
+		values[i] = value
+	}
+	for i, option := range []string{"-n", "-p", "-s"} {
+		if optionValue, exists := options[option]; exists {
+			if values[i] != "" {
+				return "", "", "", fmt.Errorf("valor posicional e opcao %s informados juntos", option)
+			}
+			values[i] = optionValue
+		}
+	}
+	if values[0] == "" || values[1] == "" {
+		return "", "", "", fmt.Errorf("nome e porta sao obrigatorios")
+	}
+	return values[0], values[1], values[2], nil
 }
 
 func (app App) remove(args []string) {
@@ -137,11 +192,17 @@ func (app App) printHelp() {
 		"Uso:\n" +
 		"  localgate <comando> [argumentos]\n\n" +
 		"Comandos:\n" +
-		"  add <nome> <porta>    Adiciona um dominio apontando para a porta local.\n" +
+		"  add <nome> <porta> [tamanho-maximo] [-n nome] [-p porta] [-s tamanho]\n" +
+		"                        Adiciona um dominio apontando para a porta local.\n" +
 		"  remove, del <nome>    Remove um dominio existente.\n" +
 		"  list                  Lista todos os dominios configurados e suas portas.\n" +
 		"  start                 Valida e recarrega as configuracoes do Nginx.\n" +
 		"  help                  Mostra esta mensagem de ajuda.\n\n" +
+		"Opcoes de add (podem aparecer em qualquer ordem):\n" +
+		"  -n nome               Nome do dominio.\n" +
+		"  -p porta              Porta local da aplicacao.\n" +
+		"  -s tamanho            Tamanho maximo do corpo (ex.: 100M).\n\n" +
+		"Exemplo: localgate add -p 3000 -s 100M -n api\n\n" +
 		"Os comandos add, remove e start requerem sudo."
 	fmt.Fprintln(app.out, help)
 }

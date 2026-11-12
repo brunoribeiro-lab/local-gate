@@ -16,7 +16,7 @@ type HostManager interface {
 
 type NginxManager interface {
 	Ensure() error
-	Add(string, int) error
+	Add(string, int, string) error
 	Remove(string) error
 	Reload() error
 }
@@ -31,16 +31,19 @@ func NewRouteService(configPath string, hosts HostManager, nginx NginxManager) R
 	return RouteService{configPath: configPath, hosts: hosts, nginx: nginx}
 }
 
-func (service RouteService) Add(name string, port int) error {
+func (service RouteService) Add(name string, port int, bodySize string) error {
 	if err := validateRoute(name, port); err != nil {
 		return err
+	}
+	if !validBodySize(bodySize) {
+		return fmt.Errorf("tamanho maximo do corpo invalido: %s", bodySize)
 	}
 	if err := service.nginx.Ensure(); err != nil {
 		return err
 	}
 
 	domain := DomainForName(name)
-	if err := service.nginx.Add(domain, port); err != nil {
+	if err := service.nginx.Add(domain, port, bodySize); err != nil {
 		return err
 	}
 	if err := service.nginx.Reload(); err != nil {
@@ -56,6 +59,31 @@ func (service RouteService) Add(name string, port int) error {
 	}
 	config[name] = port
 	return saveConfig(service.configPath, config)
+}
+
+func validBodySize(size string) bool {
+	if size == "" {
+		return true
+	}
+
+	last := size[len(size)-1]
+	if last < '0' || last > '9' {
+		switch last {
+		case 'k', 'K', 'm', 'M', 'g', 'G':
+			size = size[:len(size)-1]
+		default:
+			return false
+		}
+	}
+	if size == "" {
+		return false
+	}
+	for _, character := range size {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (service RouteService) Remove(name string) error {
