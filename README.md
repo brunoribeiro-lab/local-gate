@@ -117,8 +117,35 @@ sudo localgate add front 3000
 sudo localgate add api 4000
 ```
 
+Também é possível informar nome, porta e tamanho máximo com as opções `-n`,
+`-p` e `-s`. As opções podem ser usadas em qualquer ordem e misturadas com os
+argumentos posicionais:
+
+```bash
+sudo localgate add -n front -p 3000
+sudo localgate add -p 4000 -n api
+sudo localgate add api -p 4000
+```
+
+O formato posicional existente continua disponível: `add <nome> <porta>
+[tamanho-maximo]`.
+
 Isso cria `front.local` apontando para `localhost:3000` e `api.local`
 apontando para `localhost:4000`.
+
+Por padrão, o Localgate não define `client_max_body_size` na configuração do
+Nginx. Se uma aplicação precisar aceitar requisições maiores e retornar
+`413 Request Entity Too Large`, informe o tamanho máximo ao adicionar o domínio:
+
+```bash
+sudo localgate add uploads 5000 100M
+sudo localgate add -p 5000 -s 100M -n uploads
+```
+
+O tamanho aceita bytes ou unidades `K`, `M` e `G` (por exemplo, `512K`, `100M`
+ou `1G`). Sem esse argumento, a diretiva não é adicionada.
+
+Consulte todas as opções com `localgate help`.
 
 Depois, acesse no navegador:
 

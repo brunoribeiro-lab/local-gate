@@ -14,8 +14,8 @@ type fakeRoutes struct {
 	err    error
 }
 
-func (routes *fakeRoutes) Add(name string, port int) error {
-	routes.calls = append(routes.calls, "add:"+name+":"+strconv.Itoa(port))
+func (routes *fakeRoutes) Add(name string, port int, bodySize string) error {
+	routes.calls = append(routes.calls, "add:"+name+":"+strconv.Itoa(port)+":"+bodySize)
 	return routes.err
 }
 
@@ -47,9 +47,17 @@ func TestAppCommands(t *testing.T) {
 	}{
 		{"help", []string{"help"}, "", "Uso:"},
 		{"empty", nil, "", "Uso:"},
-		{"add", []string{"add", "api", "3000"}, "add:api:3000", "Adicionado: http://api.local"},
-		{"add full domain", []string{"add", "admin-api.monitorstack.online", "9092"}, "add:admin-api.monitorstack.online:9092", "Adicionado: http://admin-api.monitorstack.online -> localhost:9092"},
+		{"add", []string{"add", "api", "3000"}, "add:api:3000:", "Adicionado: http://api.local"},
+		{"add with body size", []string{"add", "api", "3000", "100M"}, "add:api:3000:100M", "Adicionado: http://api.local"},
+		{"add with options", []string{"add", "-p", "3000", "-s", "100M", "-n", "api"}, "add:api:3000:100M", "Adicionado: http://api.local"},
+		{"add with interleaved options", []string{"add", "api", "-p", "3000", "-s", "100M"}, "add:api:3000:100M", "Adicionado: http://api.local"},
+		{"add with equals options", []string{"add", "-s=100M", "-n=api", "-p=3000"}, "add:api:3000:100M", "Adicionado: http://api.local"},
+		{"add full domain", []string{"add", "admin-api.monitorstack.online", "9092"}, "add:admin-api.monitorstack.online:9092:", "Adicionado: http://admin-api.monitorstack.online -> localhost:9092"},
 		{"add arguments", []string{"add", "api"}, "", "Uso: localgate add"},
+		{"add unknown option", []string{"add", "-x", "api", "3000"}, "", "opcao desconhecida"},
+		{"add missing option value", []string{"add", "-n"}, "", "informe um valor"},
+		{"add duplicate option", []string{"add", "-n", "api", "-n", "web", "-p", "3000"}, "", "mais de uma vez"},
+		{"add positional and option conflict", []string{"add", "api", "3000", "-p", "4000"}, "", "informados juntos"},
 		{"add invalid port", []string{"add", "api", "x"}, "", "Porta invalida."},
 		{"remove", []string{"remove", "api"}, "remove:api", "Removido: api.local"},
 		{"remove full domain", []string{"remove", "app.com.br"}, "remove:app.com.br", "Removido: app.com.br"},
@@ -75,6 +83,16 @@ func TestAppCommands(t *testing.T) {
 				t.Fatalf("calls = %v, want %q", routes.calls, test.wantCall)
 			}
 		})
+	}
+}
+
+func TestHelpDocumentsAddOptions(t *testing.T) {
+	output := &bytes.Buffer{}
+	newTestApp(output, &fakeRoutes{}).Run([]string{"help"})
+	for _, expected := range []string{"-n nome", "-p porta", "-s tamanho", "qualquer ordem"} {
+		if !strings.Contains(output.String(), expected) {
+			t.Errorf("help does not contain %q: %s", expected, output.String())
+		}
 	}
 }
 
